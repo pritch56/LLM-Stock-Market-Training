@@ -1,35 +1,48 @@
 sources:
-  - name: "Wikipedia Finance"
-    url: "https://en.wikipedia.org/wiki/Stock_market"
-    type: "static"
-    content_selector: "#mw-content-text"
-    follow_links: false
-    tags: ["finance", "encyclopaedia"]
+  - name: "HackerNews - Machine Learning"
+    url: "https://hn.algolia.com/api/v1/search"
+    type: "api"
+    fetcher: "hackernews"
+    query: "machine learning"
+    max_results: 10
+    tags: ["ml", "technology"]
 
-  - name: "Wikipedia Economics"
-    url: "https://en.wikipedia.org/wiki/Economics"
-    type: "static"
-    content_selector: "#mw-content-text"
-    follow_links: false
-    tags: ["finance", "economics"]
+  - name: "HackerNews - Finance"
+    url: "https://hn.algolia.com/api/v1/search"
+    type: "api"
+    fetcher: "hackernews"
+    query: "stock market investing"
+    max_results: 10
+    tags: ["finance", "investing"]
 
-  - name: "Wikipedia Machine Learning"
-    url: "https://en.wikipedia.org/wiki/Machine_learning"
-    type: "static"
-    content_selector: "#mw-content-text"
-    follow_links: false
-    tags: ["ml", "encyclopaedia"]
+  - name: "HackerNews - Programming"
+    url: "https://hn.algolia.com/api/v1/search"
+    type: "api"
+    fetcher: "hackernews"
+    query: "software engineering best practices"
+    max_results: 10
+    tags: ["programming", "engineering"]
 
-  - name: "Paul Graham Essays"
-    url: "http://www.paulgraham.com/articles.html"
-    type: "static"
-    content_selector: "table"
-    follow_links: false
-    tags: ["essays", "technology"]
+  - name: "Semantic Scholar - Machine Learning"
+    url: "https://api.semanticscholar.org/graph/v1/paper/search"
+    type: "api"
+    fetcher: "semantic_scholar"
+    query: "machine learning neural networks"
+    max_results: 15
+    tags: ["ml", "research"]
 
-  - name: "Python Docs Tutorial"
-    url: "https://docs.python.org/3/tutorial/index.html"
-    type: "static"
-    content_selector: ".body"
-    follow_links: false
-    tags: ["programming", "python"]
+  - name: "Semantic Scholar - Finance"
+    url: "https://api.semanticscholar.org/graph/v1/paper/search"
+    type: "api"
+    fetcher: "semantic_scholar"
+    query: "quantitative finance algorithmic trading"
+    max_results: 15
+    tags: ["finance", "research"]
+
+  - name: "Semantic Scholar - Large Language Models"
+    url: "https://api.semanticscholar.org/graph/v1/paper/search"
+    type: "api"
+    fetcher: "semantic_scholar"
+    query: "large language models fine-tuning"
+    max_results: 15
+    tags: ["llm", "research"]

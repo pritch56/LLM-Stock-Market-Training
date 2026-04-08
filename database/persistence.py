@@ -76,6 +76,7 @@ def save_pairs(results: list[FilterResult]) -> int:
                 generation_output_tokens=r.pair.output_tokens,
                 passed_filters=r.passed,
                 filter_reason=r.reason,
+                tickers=r.pair.tickers,
                 extra={"tags": r.pair.source_tags},
             )
             session.add(pair)

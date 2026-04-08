@@ -53,6 +53,7 @@ class InstructionPair(Base):
     passed_filters = Column(Boolean, default=True)
     filter_reason = Column(String(512))
     created_at = Column(DateTime, default=datetime.utcnow)
+    tickers = Column(JSON, default=list)  # [{name, ticker, exchange}]
     extra = Column(JSON, default=dict)
 
     source_document = relationship("ProcessedDocument", back_populates="pairs")

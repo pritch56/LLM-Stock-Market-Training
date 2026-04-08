@@ -26,8 +26,11 @@ def clean_result(result: ScrapeResult, selector: Optional[str], dedup: Deduplica
     if not result.success:
         return None
 
-    text = extract_text(result.html, selector)
-    text = normalise(text)
+    if result.pre_cleaned:
+        text = normalise(result.html)
+    else:
+        text = extract_text(result.html, selector)
+        text = normalise(text)
 
     word_count = len(text.split())
     if word_count < settings.min_input_text_length // 5:

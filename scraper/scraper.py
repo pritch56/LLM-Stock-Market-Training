@@ -1,9 +1,7 @@
 import asyncio
 import logging
-from typing import Optional
 
 import httpx
-from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, Browser
 
 from config.settings import settings
@@ -13,10 +11,7 @@ from scraper.sources import SourceConfig
 logger = logging.getLogger(__name__)
 
 
-async def _scrape_static(
-    client: httpx.AsyncClient,
-    source: SourceConfig,
-) -> ScrapeResult:
+async def _scrape_static(client: httpx.AsyncClient, source: SourceConfig) -> ScrapeResult:
     try:
         html, status = await fetch_url(client, source.url)
         return ScrapeResult(
@@ -67,9 +62,30 @@ async def _scrape_dynamic(browser: Browser, source: SourceConfig) -> ScrapeResul
         await page.close()
 
 
+async def _fetch_api(client: httpx.AsyncClient, source: SourceConfig) -> list[ScrapeResult]:
+    if source.fetcher == "hackernews":
+        from api_fetcher.hackernews import fetch
+    elif source.fetcher == "arxiv":
+        from api_fetcher.arxiv import fetch
+    elif source.fetcher == "semantic_scholar":
+        from api_fetcher.semantic_scholar import fetch
+    else:
+        logger.error("Unknown API fetcher %r for source %r", source.fetcher, source.name)
+        return []
+
+    return await fetch(
+        client=client,
+        source_name=source.name,
+        query=source.query or source.name,
+        max_results=source.max_results,
+        tags=source.tags,
+    )
+
+
 async def scrape_all(sources: list[SourceConfig]) -> list[ScrapeResult]:
     static_sources = [s for s in sources if s.type == "static"]
     dynamic_sources = [s for s in sources if s.type == "dynamic"]
+    api_sources = [s for s in sources if s.type == "api"]
 
     results: list[ScrapeResult] = []
     semaphore = asyncio.Semaphore(settings.scrape_concurrency)
@@ -78,9 +94,17 @@ async def scrape_all(sources: list[SourceConfig]) -> list[ScrapeResult]:
         async with semaphore:
             return await _scrape_static(client, source)
 
+    async def bounded_api(client: httpx.AsyncClient, source: SourceConfig) -> list[ScrapeResult]:
+        async with semaphore:
+            return await _fetch_api(client, source)
+
     async with _build_client() as client:
-        tasks = [bounded_static(client, s) for s in static_sources]
-        results.extend(await asyncio.gather(*tasks))
+        static_tasks = [bounded_static(client, s) for s in static_sources]
+        results.extend(await asyncio.gather(*static_tasks))
+
+        api_tasks = [bounded_api(client, s) for s in api_sources]
+        for batch in await asyncio.gather(*api_tasks):
+            results.extend(batch)
 
     if dynamic_sources:
         async with async_playwright() as pw:

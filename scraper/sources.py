@@ -9,10 +9,14 @@ import yaml
 class SourceConfig:
     name: str
     url: str
-    type: str  # "static" | "dynamic"
+    type: str  # "static" | "dynamic" | "api"
     content_selector: Optional[str] = None
     follow_links: bool = False
     tags: list[str] = field(default_factory=list)
+    # API-source fields
+    fetcher: Optional[str] = None   # "hackernews" | "arxiv"
+    query: Optional[str] = None
+    max_results: int = 10
 
 
 def load_sources(path: Path) -> list[SourceConfig]:

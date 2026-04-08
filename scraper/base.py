@@ -19,6 +19,7 @@ class ScrapeResult:
     status_code: int
     tags: list[str] = field(default_factory=list)
     error: Optional[str] = None
+    pre_cleaned: bool = False  # True when content is already plain text (API sources)
 
     @property
     def success(self) -> bool:

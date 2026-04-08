@@ -13,5 +13,6 @@ def build_records(results: list[FilterResult]) -> list[dict[str, Any]]:
             "instruction": r.pair.instruction,
             "input": r.pair.input,
             "output": r.pair.output,
+            "tickers": r.pair.tickers,
         })
     return records

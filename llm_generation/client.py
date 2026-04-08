@@ -57,26 +57,50 @@ class OpenAIClient(LLMClient):
 class MockClient(LLMClient):
     """Generates template pairs locally without any API call. Useful for testing the pipeline."""
 
+    _MOCK_TICKERS = [
+        {"name": "Apple Inc.", "ticker": "AAPL", "exchange": "NASDAQ",
+         "relevance": "Major tech company frequently discussed in ML and finance contexts."},
+        {"name": "Microsoft Corporation", "ticker": "MSFT", "exchange": "NASDAQ",
+         "relevance": "Key player in cloud computing and AI infrastructure."},
+    ]
+
     async def complete(self, prompt: str, system: Optional[str] = None) -> tuple[str, int, int]:
         import json, re
-        # Extract the passage from the prompt
+
+        # Entity extraction call
+        if "extract all companies" in prompt.lower() or '"entities"' in prompt:
+            return json.dumps({"entities": self._MOCK_TICKERS}), 0, 0
+
+        # Pair generation call
         match = re.search(r'"""\n(.*?)\n"""', prompt, re.DOTALL)
         passage = match.group(1).strip()[:300] if match else "the provided text"
         pairs = [
             {
-                "instruction": f"Summarise the following passage in your own words.",
+                "instruction": "What is the potential stock market impact of the developments described in this passage?",
                 "input": passage[:200],
-                "output": f"The passage discusses: {passage[:150]}. It provides an overview of the key concepts and their significance in context.",
+                "output": (
+                    f"The passage highlights developments relevant to Apple Inc. (AAPL) and Microsoft Corporation (MSFT). "
+                    f"Based on: {passage[:100]}. "
+                    "These factors could influence investor sentiment and near-term price action for companies in this sector."
+                ),
             },
             {
-                "instruction": "What is the main topic covered in this text?",
+                "instruction": "Which companies and tickers are most exposed to the risks or opportunities described?",
                 "input": "",
-                "output": f"The main topic is: {passage[:100]}. This subject is important because it covers fundamental ideas that have broad applications.",
+                "output": (
+                    "Apple Inc. (AAPL) and Microsoft Corporation (MSFT) are directly exposed to these developments. "
+                    f"The core theme — {passage[:80]} — suggests potential upside for firms with strong AI and cloud exposure. "
+                    "Investors should monitor earnings guidance and sector rotation signals."
+                ),
             },
             {
-                "instruction": "List three key points from the passage.",
+                "instruction": "Summarise the key investment signals from this passage.",
                 "input": passage[:200],
-                "output": f"1. {passage[:60]}.\n2. The text elaborates on related concepts and their interactions.\n3. The material provides context for understanding the broader subject area.",
+                "output": (
+                    f"Key signal: {passage[:80]}. "
+                    "This is relevant to AAPL (Apple Inc.) on NASDAQ and MSFT (Microsoft Corporation) on NASDAQ. "
+                    "The information suggests monitoring these tickers for momentum or mean-reversion setups depending on broader market conditions."
+                ),
             },
         ]
         return json.dumps(pairs), 0, 0

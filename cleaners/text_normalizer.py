@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from html import unescape
 
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _REPEATED_PUNCT_RE = re.compile(r"([!?.]){3,}")
@@ -8,6 +9,7 @@ _WIKI_REF_RE = re.compile(r"\[\d+\]")
 
 
 def normalise(text: str) -> str:
+    text = unescape(text)
     text = unicodedata.normalize("NFKC", text)
     text = _CONTROL_CHARS_RE.sub("", text)
     text = _URL_RE.sub("", text)
