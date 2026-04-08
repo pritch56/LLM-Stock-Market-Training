@@ -8,11 +8,17 @@ from database.models import Article, CompanyImpact
 logger = logging.getLogger(__name__)
 
 
-def insert_article(article_text: str, published_time: Optional[datetime] = None) -> int:
+def url_already_processed(url: str) -> bool:
+    with get_session() as session:
+        return session.query(Article).filter_by(source_url=url).first() is not None
+
+
+def insert_article(article_text: str, published_time: Optional[datetime] = None, source_url: Optional[str] = None) -> int:
     with get_session() as session:
         article = Article(
             article_text=article_text,
             published_time=published_time,
+            source_url=source_url,
         )
         session.add(article)
         session.flush()

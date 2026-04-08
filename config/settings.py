@@ -22,9 +22,10 @@ class Settings(BaseSettings):
     scrape_user_agent: str = (
         "Mozilla/5.0 (compatible; DatasetBot/1.0; +https://github.com/example/dataset-pipeline)"
     )
+    max_articles_per_feed: int = 5
 
-    # PostgreSQL
-    database_url: str = "postgresql://localhost:5432/stock_news"
+    # Database
+    database_url: str = "sqlite:///stock_news.db"
 
 
 settings = Settings()

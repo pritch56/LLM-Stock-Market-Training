@@ -13,6 +13,7 @@ class Article(Base):
     __tablename__ = "articles"
 
     id = Column(Integer, primary_key=True)
+    source_url = Column(Text, unique=True)
     published_time = Column(DateTime(timezone=True))
     article_text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
