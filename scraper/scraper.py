@@ -1,122 +1,72 @@
-import asyncio
 import logging
+import re
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
 
-import httpx
-from playwright.async_api import async_playwright, Browser
+from bs4 import BeautifulSoup
 
-from config.settings import settings
-from scraper.base import ScrapeResult, _build_client, fetch_url
-from scraper.sources import SourceConfig
+from scraper.base import fetch_url
 
 logger = logging.getLogger(__name__)
 
-
-async def _scrape_static(client: httpx.AsyncClient, source: SourceConfig) -> ScrapeResult:
-    try:
-        html, status = await fetch_url(client, source.url)
-        return ScrapeResult(
-            url=source.url,
-            source_name=source.name,
-            html=html,
-            status_code=status,
-            tags=source.tags,
-        )
-    except Exception as exc:
-        logger.warning("Failed to scrape %s: %s", source.url, exc)
-        return ScrapeResult(
-            url=source.url,
-            source_name=source.name,
-            html=None,
-            status_code=0,
-            tags=source.tags,
-            error=str(exc),
-        )
+_NOISE_TAGS = {
+    "script", "style", "nav", "footer", "header", "aside",
+    "form", "button", "iframe", "noscript", "svg", "figure",
+}
+_WHITESPACE_RE = re.compile(r"\n{3,}")
+_INLINE_SPACE_RE = re.compile(r"[ \t]{2,}")
 
 
-async def _scrape_dynamic(browser: Browser, source: SourceConfig) -> ScrapeResult:
-    page = await browser.new_page()
-    try:
-        await page.set_extra_http_headers({"User-Agent": settings.scrape_user_agent})
-        response = await page.goto(source.url, timeout=settings.scrape_timeout_seconds * 1000)
-        await page.wait_for_load_state("networkidle")
-        html = await page.content()
-        status = response.status if response else 0
-        return ScrapeResult(
-            url=source.url,
-            source_name=source.name,
-            html=html,
-            status_code=status,
-            tags=source.tags,
-        )
-    except Exception as exc:
-        logger.warning("Playwright failed for %s: %s", source.url, exc)
-        return ScrapeResult(
-            url=source.url,
-            source_name=source.name,
-            html=None,
-            status_code=0,
-            tags=source.tags,
-            error=str(exc),
-        )
-    finally:
-        await page.close()
+@dataclass
+class ArticleData:
+    article_text: str
+    published_time: Optional[datetime]
 
 
-async def _fetch_api(client: httpx.AsyncClient, source: SourceConfig) -> list[ScrapeResult]:
-    if source.fetcher == "hackernews":
-        from api_fetcher.hackernews import fetch
-    elif source.fetcher == "arxiv":
-        from api_fetcher.arxiv import fetch
-    elif source.fetcher == "semantic_scholar":
-        from api_fetcher.semantic_scholar import fetch
-    else:
-        logger.error("Unknown API fetcher %r for source %r", source.fetcher, source.name)
-        return []
-
-    return await fetch(
-        client=client,
-        source_name=source.name,
-        query=source.query or source.name,
-        max_results=source.max_results,
-        tags=source.tags,
-    )
+def _extract_text(html: str) -> str:
+    soup = BeautifulSoup(html, "lxml")
+    for tag in soup(_NOISE_TAGS):
+        tag.decompose()
+    root = soup.body or soup
+    text = root.get_text(separator="\n")
+    text = _INLINE_SPACE_RE.sub(" ", text)
+    text = _WHITESPACE_RE.sub("\n\n", text)
+    return text.strip()
 
 
-async def scrape_all(sources: list[SourceConfig]) -> list[ScrapeResult]:
-    static_sources = [s for s in sources if s.type == "static"]
-    dynamic_sources = [s for s in sources if s.type == "dynamic"]
-    api_sources = [s for s in sources if s.type == "api"]
+def _extract_published_time(html: str) -> Optional[datetime]:
+    soup = BeautifulSoup(html, "lxml")
 
-    results: list[ScrapeResult] = []
-    semaphore = asyncio.Semaphore(settings.scrape_concurrency)
-
-    async def bounded_static(client: httpx.AsyncClient, source: SourceConfig) -> ScrapeResult:
-        async with semaphore:
-            return await _scrape_static(client, source)
-
-    async def bounded_api(client: httpx.AsyncClient, source: SourceConfig) -> list[ScrapeResult]:
-        async with semaphore:
-            return await _fetch_api(client, source)
-
-    async with _build_client() as client:
-        static_tasks = [bounded_static(client, s) for s in static_sources]
-        results.extend(await asyncio.gather(*static_tasks))
-
-        api_tasks = [bounded_api(client, s) for s in api_sources]
-        for batch in await asyncio.gather(*api_tasks):
-            results.extend(batch)
-
-    if dynamic_sources:
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True)
+    # Check common meta tags for published time
+    for attr in (
+        {"property": "article:published_time"},
+        {"name": "pubdate"},
+        {"name": "date"},
+        {"property": "og:article:published_time"},
+        {"itemprop": "datePublished"},
+    ):
+        tag = soup.find("meta", attrs=attr)
+        if tag and tag.get("content"):
             try:
-                async def bounded_dynamic(source: SourceConfig) -> ScrapeResult:
-                    async with semaphore:
-                        return await _scrape_dynamic(browser, source)
+                return datetime.fromisoformat(tag["content"].replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                continue
 
-                tasks = [bounded_dynamic(s) for s in dynamic_sources]
-                results.extend(await asyncio.gather(*tasks))
-            finally:
-                await browser.close()
+    # Check <time> elements
+    time_tag = soup.find("time", attrs={"datetime": True})
+    if time_tag:
+        try:
+            return datetime.fromisoformat(time_tag["datetime"].replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            pass
 
-    return results
+    return None
+
+
+async def scrape_article(url: str) -> ArticleData:
+    html, _ = await fetch_url(url)
+    article_text = _extract_text(html)
+    published_time = _extract_published_time(html)
+    logger.info("Scraped article from %s (%d chars)", url, len(article_text))
+    return ArticleData(article_text=article_text, published_time=published_time)

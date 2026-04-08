@@ -54,61 +54,7 @@ class OpenAIClient(LLMClient):
         return text, usage.prompt_tokens, usage.completion_tokens
 
 
-class MockClient(LLMClient):
-    """Generates template pairs locally without any API call. Useful for testing the pipeline."""
-
-    _MOCK_TICKERS = [
-        {"name": "Apple Inc.", "ticker": "AAPL", "exchange": "NASDAQ",
-         "relevance": "Major tech company frequently discussed in ML and finance contexts."},
-        {"name": "Microsoft Corporation", "ticker": "MSFT", "exchange": "NASDAQ",
-         "relevance": "Key player in cloud computing and AI infrastructure."},
-    ]
-
-    async def complete(self, prompt: str, system: Optional[str] = None) -> tuple[str, int, int]:
-        import json, re
-
-        # Entity extraction call
-        if "extract all companies" in prompt.lower() or '"entities"' in prompt:
-            return json.dumps({"entities": self._MOCK_TICKERS}), 0, 0
-
-        # Pair generation call
-        match = re.search(r'"""\n(.*?)\n"""', prompt, re.DOTALL)
-        passage = match.group(1).strip()[:300] if match else "the provided text"
-        pairs = [
-            {
-                "instruction": "What is the potential stock market impact of the developments described in this passage?",
-                "input": passage[:200],
-                "output": (
-                    f"The passage highlights developments relevant to Apple Inc. (AAPL) and Microsoft Corporation (MSFT). "
-                    f"Based on: {passage[:100]}. "
-                    "These factors could influence investor sentiment and near-term price action for companies in this sector."
-                ),
-            },
-            {
-                "instruction": "Which companies and tickers are most exposed to the risks or opportunities described?",
-                "input": "",
-                "output": (
-                    "Apple Inc. (AAPL) and Microsoft Corporation (MSFT) are directly exposed to these developments. "
-                    f"The core theme — {passage[:80]} — suggests potential upside for firms with strong AI and cloud exposure. "
-                    "Investors should monitor earnings guidance and sector rotation signals."
-                ),
-            },
-            {
-                "instruction": "Summarise the key investment signals from this passage.",
-                "input": passage[:200],
-                "output": (
-                    f"Key signal: {passage[:80]}. "
-                    "This is relevant to AAPL (Apple Inc.) on NASDAQ and MSFT (Microsoft Corporation) on NASDAQ. "
-                    "The information suggests monitoring these tickers for momentum or mean-reversion setups depending on broader market conditions."
-                ),
-            },
-        ]
-        return json.dumps(pairs), 0, 0
-
-
-def build_client(mock: bool = False) -> LLMClient:
-    if mock:
-        return MockClient()
+def build_client() -> LLMClient:
     if settings.llm_provider == "anthropic":
         return AnthropicClient()
     if settings.llm_provider == "openai":

@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, Integer, String, Text, Float, DateTime, Boolean, JSON, ForeignKey
+    Column, Integer, Text, DateTime, ForeignKey, CheckConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -9,51 +9,29 @@ class Base(DeclarativeBase):
     pass
 
 
-class RawDocument(Base):
-    __tablename__ = "raw_documents"
+class Article(Base):
+    __tablename__ = "articles"
 
     id = Column(Integer, primary_key=True)
-    url = Column(String(2048), unique=True, nullable=False)
-    source_name = Column(String(256))
-    raw_html = Column(Text)
-    scraped_at = Column(DateTime, default=datetime.utcnow)
-    http_status = Column(Integer)
-    tags = Column(JSON, default=list)
+    published_time = Column(DateTime(timezone=True))
+    article_text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    processed = relationship("ProcessedDocument", back_populates="raw", uselist=False)
+    impacts = relationship("CompanyImpact", back_populates="article")
 
 
-class ProcessedDocument(Base):
-    __tablename__ = "processed_documents"
+class CompanyImpact(Base):
+    __tablename__ = "company_impacts"
 
     id = Column(Integer, primary_key=True)
-    raw_id = Column(Integer, ForeignKey("raw_documents.id"), unique=True)
-    clean_text = Column(Text, nullable=False)
-    word_count = Column(Integer)
-    language = Column(String(16))
-    content_hash = Column(String(64), unique=True)
-    processed_at = Column(DateTime, default=datetime.utcnow)
+    article_id = Column(Integer, ForeignKey("articles.id"), nullable=False)
+    company_name = Column(Text, nullable=False)
+    ticker = Column(Text)
+    impact_rating = Column(Integer, nullable=False)
+    reasoning = Column(Text)
 
-    raw = relationship("RawDocument", back_populates="processed")
-    pairs = relationship("InstructionPair", back_populates="source_document")
+    __table_args__ = (
+        CheckConstraint("impact_rating >= 1 AND impact_rating <= 10", name="ck_impact_rating_range"),
+    )
 
-
-class InstructionPair(Base):
-    __tablename__ = "instruction_pairs"
-
-    id = Column(Integer, primary_key=True)
-    document_id = Column(Integer, ForeignKey("processed_documents.id"))
-    instruction = Column(Text, nullable=False)
-    input = Column(Text, default="")
-    output = Column(Text, nullable=False)
-    model_used = Column(String(128))
-    generation_prompt_tokens = Column(Integer)
-    generation_output_tokens = Column(Integer)
-    quality_score = Column(Float)
-    passed_filters = Column(Boolean, default=True)
-    filter_reason = Column(String(512))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    tickers = Column(JSON, default=list)  # [{name, ticker, exchange}]
-    extra = Column(JSON, default=dict)
-
-    source_document = relationship("ProcessedDocument", back_populates="pairs")
+    article = relationship("Article", back_populates="impacts")
