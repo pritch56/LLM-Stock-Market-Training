@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ':*)",
+      "Bash(pip install:*)",
+      "Bash(pip show:*)",
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(C:\\\\Users\\\\bp\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe -m pip install lxml -q)",
+      "Bash(python -m pip install lxml langdetect -q)",
+      "Bash(python -c \"import lxml; print\\('lxml OK'\\)\")",
+      "Bash(python -m pip install datasets -q)",
+      "Bash(python -c \"import datasets; print\\(datasets.__version__\\)\")",
+      "Bash(python -m scripts.export_lora --input output_test/dataset.jsonl --output output_test/lora.jsonl)",
+      "Bash(python run_pipeline.py)"
+    ]
+  }
+}

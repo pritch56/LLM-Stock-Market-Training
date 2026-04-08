@@ -1,0 +1,35 @@
+sources:
+  - name: "Wikipedia Finance"
+    url: "https://en.wikipedia.org/wiki/Stock_market"
+    type: "static"
+    content_selector: "#mw-content-text"
+    follow_links: false
+    tags: ["finance", "encyclopaedia"]
+
+  - name: "Wikipedia Economics"
+    url: "https://en.wikipedia.org/wiki/Economics"
+    type: "static"
+    content_selector: "#mw-content-text"
+    follow_links: false
+    tags: ["finance", "economics"]
+
+  - name: "Wikipedia Machine Learning"
+    url: "https://en.wikipedia.org/wiki/Machine_learning"
+    type: "static"
+    content_selector: "#mw-content-text"
+    follow_links: false
+    tags: ["ml", "encyclopaedia"]
+
+  - name: "Paul Graham Essays"
+    url: "http://www.paulgraham.com/articles.html"
+    type: "static"
+    content_selector: "table"
+    follow_links: false
+    tags: ["essays", "technology"]
+
+  - name: "Python Docs Tutorial"
+    url: "https://docs.python.org/3/tutorial/index.html"
+    type: "static"
+    content_selector: ".body"
+    follow_links: false
+    tags: ["programming", "python"]
